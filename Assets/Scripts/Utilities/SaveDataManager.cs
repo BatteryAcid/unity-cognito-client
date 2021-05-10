@@ -1,5 +1,7 @@
 using UnityEngine;
 
+// Used to save scripts to json that implement ISaveable
+// based on https://github.com/UnityTechnologies/UniteNow20-Persistent-Data
 public static class SaveDataManager
 {
    public static void SaveJsonData(ISaveable saveable)

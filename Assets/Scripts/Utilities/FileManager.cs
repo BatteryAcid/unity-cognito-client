@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using UnityEngine;
 
+// Saves a file to the operating system's persistent data path
+// based on https://github.com/UnityTechnologies/UniteNow20-Persistent-Data
 public static class FileManager
 {
    public static bool WriteToFile(string a_FileName, string a_FileContents)

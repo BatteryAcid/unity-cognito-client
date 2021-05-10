@@ -1,8 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI;
-using System.Collections;
 using System.Collections.Generic;
-using Amazon.Runtime;
 using Amazon.Extensions.CognitoAuthentication;
 using Amazon.CognitoIdentity;
 using Amazon.CognitoIdentityProvider;
@@ -11,57 +8,47 @@ using System;
 using System.Threading.Tasks;
 using System.Net;
 
-// TODO:
-// - include some docs on how/why these tokens work and refresh stuff
 public class AuthenticationManager : MonoBehaviour
 {
-   public static Amazon.RegionEndpoint Region = Amazon.RegionEndpoint.USEast1; //insert region user pool was created in, if it is different than US EAST 1
+   // the AWS region of where your services live
+   public static Amazon.RegionEndpoint Region = Amazon.RegionEndpoint.USEast1;
 
-   // TODO: move these to config file
+   // In production, should probably keep these in a config file
    const string IdentityPool = "us-east-1:f7a0ab43-0346-4960-9922-ca94bbbffda0"; //insert your Cognito User Pool ID, found under General Settings
    const string AppClientID = "75225apkfdj0pbsnr9k2uj8i17"; //insert App client ID, found under App Client Settings
-
-   public static string userPoolId = "us-east-1_1hbXtfSYh";
-   public static string userid = ""; // TODO: is this needed here?  probably, we may use this for gamelift requests, as it needs the user id
+   const string userPoolId = "us-east-1_1hbXtfSYh";
 
    private AmazonCognitoIdentityProviderClient _provider;
-   private CognitoAWSCredentials cognitoAWSCredentials;
-   private string _jwt;
+   private CognitoAWSCredentials _cognitoAWSCredentials;
+   private static string _userid = "";
+   private CognitoUser _user;
 
    public async Task<bool> RefreshSession()
    {
       Debug.Log("RefreshSession");
 
       DateTime issued = DateTime.Now;
-      RefreshTokenCache refreshTokenCache = new RefreshTokenCache();
-      SaveDataManager.LoadJsonData(refreshTokenCache);
+      UserSessionCache userSessionCache = new UserSessionCache();
+      SaveDataManager.LoadJsonData(userSessionCache);
 
       try
       {
          CognitoUserPool userPool = new CognitoUserPool(userPoolId, AppClientID, _provider);
 
-         //TODO do we need to put something here in the email field??
+         // apparently the username field can be left blank for a token refresh request
          CognitoUser user = new CognitoUser("", AppClientID, userPool, _provider);
 
-         if (user == null)
-         {
-            Debug.Log("User is null");
-         }
-
-         if (_provider == null)
-         {
-            Debug.Log("provider is null");
-         }
-
-         // The  "Refresh token expiration (days)" (Cognito->UserPool->General Settings->App clients->Show Details) is the
+         // The "Refresh token expiration (days)" (Cognito->UserPool->General Settings->App clients->Show Details) is the
          // amount of time since the last login that you can use the refresh token to get new tokens.
          // After that period the refresh will fail
          // Using DateTime.Now.AddHours(1) is a workaround for https://github.com/aws/aws-sdk-net-extensions-cognito/issues/24
          user.SessionTokens = new CognitoUserSession(
-            refreshTokenCache.getIdToken(),
-            refreshTokenCache.getAccessToken(),
-            refreshTokenCache.getRefreshToken(),
-            issued, DateTime.Now.AddHours(1));
+            userSessionCache.getIdToken(),
+            userSessionCache.getAccessToken(),
+            userSessionCache.getRefreshToken(),
+            issued,
+            DateTime.Now.AddDays(30)); // TODO: need to investigate further. 
+                                       // It was my understanding that this should be set to when your refresh token expires...
 
          AuthFlowResponse authFlowResponse = await user.StartWithRefreshTokenAuthAsync(new InitiateRefreshTokenAuthRequest
          {
@@ -69,12 +56,22 @@ public class AuthenticationManager : MonoBehaviour
          })
          .ConfigureAwait(false);
 
-         string token = authFlowResponse.AuthenticationResult.AccessToken;
-
          // Debug.Log("User Access Token after refresh: " + token);
-         Debug.Log("User refreshed successfully!");
+         Debug.Log("User refresh token successfully updated!");
 
-         cognitoAWSCredentials = user.GetCognitoAWSCredentials(IdentityPool, Region);
+         // update session cache
+         UserSessionCache userSessionCacheToUpdate = new UserSessionCache(
+            authFlowResponse.AuthenticationResult.IdToken,
+            authFlowResponse.AuthenticationResult.AccessToken,
+            authFlowResponse.AuthenticationResult.RefreshToken,
+            userSessionCache.getUserId());
+
+         SaveDataManager.SaveJsonData(userSessionCacheToUpdate);
+
+         // update credentials with the latest access token
+         _cognitoAWSCredentials = user.GetCognitoAWSCredentials(IdentityPool, Region);
+
+         _user = user;
 
          return true;
       }
@@ -94,6 +91,49 @@ public class AuthenticationManager : MonoBehaviour
          Debug.Log("Exception: " + ex);
       }
       return false;
+   }
+
+   public async Task<bool> Login(string email, string password)
+   {
+      Debug.Log("Login: " + email + ", " + password);
+
+      CognitoUserPool userPool = new CognitoUserPool(userPoolId, AppClientID, _provider);
+      CognitoUser user = new CognitoUser(email, AppClientID, userPool, _provider);
+
+      InitiateSrpAuthRequest authRequest = new InitiateSrpAuthRequest()
+      {
+         Password = password
+      };
+
+      try
+      {
+         AuthFlowResponse authFlowResponse = await user.StartWithSrpAuthAsync(authRequest).ConfigureAwait(false);
+
+         _userid = await GetUserIdFromProvider(authFlowResponse.AuthenticationResult.AccessToken);
+         Debug.Log("Users unique ID from cognito: " + _userid);
+
+         UserSessionCache userSessionCache = new UserSessionCache(
+            authFlowResponse.AuthenticationResult.IdToken,
+            authFlowResponse.AuthenticationResult.AccessToken,
+            authFlowResponse.AuthenticationResult.RefreshToken,
+            _userid);
+
+         SaveDataManager.SaveJsonData(userSessionCache);
+
+         // This how you get credentials to use for accessing other services.
+         // This IdentityPool is your Authorization, so if you tried to access using an
+         // IdentityPool that didn't have the policy to access your target AWS service, it would fail.
+         _cognitoAWSCredentials = user.GetCognitoAWSCredentials(IdentityPool, Region);
+
+         _user = user;
+
+         return true;
+      }
+      catch (Exception e)
+      {
+         Debug.Log("Login failed, exception: " + e);
+         return false;
+      }
    }
 
    public async Task<bool> Signup(string username, string email, string password)
@@ -117,13 +157,12 @@ public class AuthenticationManager : MonoBehaviour
             Name = "preferred_username", Value = username
          }
       };
-
       signUpRequest.UserAttributes = attributes;
 
       try
       {
          SignUpResponse sighupResponse = await _provider.SignUpAsync(signUpRequest);
-         Debug.Log("Sign up worked");
+         Debug.Log("Sign up successful");
          return true;
       }
       catch (Exception e)
@@ -133,70 +172,32 @@ public class AuthenticationManager : MonoBehaviour
       }
    }
 
-   public async Task<bool> Login(string email, string password)
+   // Make the user's unique id available for GameLift APIs, linking saved data to user, etc
+   public string GetUsersId()
    {
-      Debug.Log("Login: " + email + ", " + password);
-
-      CognitoUserPool userPool = new CognitoUserPool(userPoolId, AppClientID, _provider);
-      CognitoUser user = new CognitoUser(email, AppClientID, userPool, _provider);
-
-      if (user == null)
+      Debug.Log("GetUserId: [" + _userid + "]");
+      if (_userid == null || _userid == "")
       {
-         Debug.Log("User is null");
+         Debug.Log("userid from cache");
+
+         // load userid from cached session 
+         UserSessionCache userSessionCache = new UserSessionCache();
+         SaveDataManager.LoadJsonData(userSessionCache);
+         _userid = userSessionCache.getUserId();
       }
-
-      InitiateSrpAuthRequest authRequest = new InitiateSrpAuthRequest()
-      {
-         Password = password
-      };
-
-      try
-      {
-         AuthFlowResponse authResponse = await user.StartWithSrpAuthAsync(authRequest).ConfigureAwait(false);
-
-         _jwt = authResponse.AuthenticationResult.AccessToken;
-
-         GetUserRequest getUserRequest = new GetUserRequest();
-
-         RefreshTokenCache refreshTokenCache = new RefreshTokenCache(
-            authResponse.AuthenticationResult.IdToken,
-            authResponse.AuthenticationResult.AccessToken,
-            authResponse.AuthenticationResult.RefreshToken);
-
-         SaveDataManager.SaveJsonData(refreshTokenCache);
-
-         string subId = await GetUserId();
-         Debug.Log("Users unique ID from cognito: " + subId);
-
-         // This how you get credentials to use for accessing other services.
-         // This IdentityPool is your Authorization, so if you tried to access using an
-         // IdentityPool that didn't have GameLift permissions, it would fail.
-         cognitoAWSCredentials = user.GetCognitoAWSCredentials(IdentityPool, Region);
-
-         return true;
-
-         // Debug.Log(authResponse.AuthenticationResult.IdToken + ", "
-         //    + authResponse.AuthenticationResult.AccessToken + ", "
-         //    + authResponse.AuthenticationResult.RefreshToken + ", "
-         //    + authResponse.AuthenticationResult.ExpiresIn);
-      }
-      catch (Exception e)
-      {
-         Debug.Log("Login failed, exception: " + e);
-         return false;
-      }
+      return _userid;
    }
 
-   private async Task<string> GetUserId()
+   // we call this once after the user is authenticated, then cache it as part of the session for later retrieval 
+   private async Task<string> GetUserIdFromProvider(string accessToken)
    {
       Debug.Log("Getting user's id...");
-
       string subId = "";
 
       Task<GetUserResponse> responseTask =
          _provider.GetUserAsync(new GetUserRequest
          {
-            AccessToken = _jwt
+            AccessToken = accessToken
          });
 
       GetUserResponse responseObject = await responseTask;
@@ -214,18 +215,36 @@ public class AuthenticationManager : MonoBehaviour
       return subId;
    }
 
-   public CognitoAWSCredentials GetCredentials()
+   // Limitation note: so this GlobalSignOutAsync signs out the user from ALL devices, and not just the game.
+   // So if you had other sessions for your website or app, those would also be killed.  
+   // Currently, I don't think there is native support for granular session invalidation without some work arounds.
+   public async void SignOut()
    {
-      return cognitoAWSCredentials;
+      await _user.GlobalSignOutAsync();
+
+      // Important! Make sure to remove the local stored tokens 
+      UserSessionCache userSessionCache = new UserSessionCache("", "", "", "");
+      SaveDataManager.SaveJsonData(userSessionCache);
+
+      Debug.Log("user logged out.");
    }
 
-   void Start()
+   // access to the user's authenticated credentials to be used to call other AWS APIs
+   public CognitoAWSCredentials GetCredentials()
    {
+      return _cognitoAWSCredentials;
+   }
+
+   public string GetAccessToken()
+   {
+      UserSessionCache userSessionCache = new UserSessionCache();
+      SaveDataManager.LoadJsonData(userSessionCache);
+      return userSessionCache.getAccessToken();
    }
 
    void Awake()
    {
-      Debug.Log("Awake");
+      Debug.Log("AuthenticationManager: Awake");
       _provider = new AmazonCognitoIdentityProviderClient(new Amazon.Runtime.AnonymousAWSCredentials(), Region);
    }
 }

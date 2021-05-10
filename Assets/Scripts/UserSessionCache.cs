@@ -1,19 +1,22 @@
 using UnityEngine;
 
+// Use this class to store user session data to use for refreshing tokens
 [System.Serializable]
-public class RefreshTokenCache : ISaveable
+public class UserSessionCache : ISaveable
 {
    public string _idToken;
    public string _accessToken;
    public string _refreshToken;
+   public string _userId;
 
-   public RefreshTokenCache() {}
+   public UserSessionCache() { }
 
-   public RefreshTokenCache(string idToken, string accessToken, string refreshToken)
+   public UserSessionCache(string idToken, string accessToken, string refreshToken, string userId)
    {
       _idToken = idToken;
       _accessToken = accessToken;
       _refreshToken = refreshToken;
+      _userId = userId;
    }
 
    public string getIdToken()
@@ -29,6 +32,11 @@ public class RefreshTokenCache : ISaveable
    public string getRefreshToken()
    {
       return _refreshToken;
+   }
+
+   public string getUserId()
+   {
+      return _userId;
    }
 
    public string ToJson()
