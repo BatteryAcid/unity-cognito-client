@@ -1,4 +1,3 @@
-using UnityEngine;
 
 // Used to save scripts to json that implement ISaveable
 // based on https://github.com/UnityTechnologies/UniteNow20-Persistent-Data
@@ -8,7 +7,7 @@ public static class SaveDataManager
    {
       if (FileManager.WriteToFile(saveable.FileNameToUseForData(), saveable.ToJson()))
       {
-         Debug.Log("Save successful");
+         // Debug.Log("Save successful");
       }
    }
 
@@ -17,7 +16,7 @@ public static class SaveDataManager
       if (FileManager.LoadFromFile(saveable.FileNameToUseForData(), out var json))
       {
          saveable.LoadFromJson(json);
-         Debug.Log("Load complete");
+         // Debug.Log("Load complete");
       }
    }
 }

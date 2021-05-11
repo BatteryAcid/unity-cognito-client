@@ -39,9 +39,8 @@ public class AuthenticationManager : MonoBehaviour
          CognitoUser user = new CognitoUser("", AppClientID, userPool, _provider);
 
          // The "Refresh token expiration (days)" (Cognito->UserPool->General Settings->App clients->Show Details) is the
-         // amount of time since the last login that you can use the refresh token to get new tokens.
-         // After that period the refresh will fail
-         // Using DateTime.Now.AddHours(1) is a workaround for https://github.com/aws/aws-sdk-net-extensions-cognito/issues/24
+         // amount of time since the last login that you can use the refresh token to get new tokens. After that period the refresh
+         // will fail Using DateTime.Now.AddHours(1) is a workaround for https://github.com/aws/aws-sdk-net-extensions-cognito/issues/24
          user.SessionTokens = new CognitoUserSession(
             userSessionCache.getIdToken(),
             userSessionCache.getAccessToken(),
@@ -50,6 +49,7 @@ public class AuthenticationManager : MonoBehaviour
             DateTime.Now.AddDays(30)); // TODO: need to investigate further. 
                                        // It was my understanding that this should be set to when your refresh token expires...
 
+         // Attempt refresh token call
          AuthFlowResponse authFlowResponse = await user.StartWithRefreshTokenAuthAsync(new InitiateRefreshTokenAuthRequest
          {
             AuthFlowType = AuthFlowType.REFRESH_TOKEN_AUTH
@@ -95,7 +95,7 @@ public class AuthenticationManager : MonoBehaviour
 
    public async Task<bool> Login(string email, string password)
    {
-      Debug.Log("Login: " + email + ", " + password);
+      // Debug.Log("Login: " + email + ", " + password);
 
       CognitoUserPool userPool = new CognitoUserPool(userPoolId, AppClientID, _provider);
       CognitoUser user = new CognitoUser(email, AppClientID, userPool, _provider);
@@ -110,7 +110,7 @@ public class AuthenticationManager : MonoBehaviour
          AuthFlowResponse authFlowResponse = await user.StartWithSrpAuthAsync(authRequest).ConfigureAwait(false);
 
          _userid = await GetUserIdFromProvider(authFlowResponse.AuthenticationResult.AccessToken);
-         Debug.Log("Users unique ID from cognito: " + _userid);
+         // Debug.Log("Users unique ID from cognito: " + _userid);
 
          UserSessionCache userSessionCache = new UserSessionCache(
             authFlowResponse.AuthenticationResult.IdToken,
@@ -138,7 +138,7 @@ public class AuthenticationManager : MonoBehaviour
 
    public async Task<bool> Signup(string username, string email, string password)
    {
-      Debug.Log("SignUpRequest: " + username + ", " + email + ", " + password);
+      // Debug.Log("SignUpRequest: " + username + ", " + email + ", " + password);
 
       SignUpRequest signUpRequest = new SignUpRequest()
       {
@@ -175,11 +175,9 @@ public class AuthenticationManager : MonoBehaviour
    // Make the user's unique id available for GameLift APIs, linking saved data to user, etc
    public string GetUsersId()
    {
-      Debug.Log("GetUserId: [" + _userid + "]");
+      // Debug.Log("GetUserId: [" + _userid + "]");
       if (_userid == null || _userid == "")
       {
-         Debug.Log("userid from cache");
-
          // load userid from cached session 
          UserSessionCache userSessionCache = new UserSessionCache();
          SaveDataManager.LoadJsonData(userSessionCache);
@@ -191,7 +189,7 @@ public class AuthenticationManager : MonoBehaviour
    // we call this once after the user is authenticated, then cache it as part of the session for later retrieval 
    private async Task<string> GetUserIdFromProvider(string accessToken)
    {
-      Debug.Log("Getting user's id...");
+      // Debug.Log("Getting user's id...");
       string subId = "";
 
       Task<GetUserResponse> responseTask =
