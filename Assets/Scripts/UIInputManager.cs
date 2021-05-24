@@ -31,7 +31,7 @@ public class UIInputManager : MonoBehaviour
    private List<Selectable> _fields;
    private int _selectedFieldIndex = -1;
 
-   private void processSceneFromAuthStatus(bool authStatus)
+   private void displayComponentsFromAuthStatus(bool authStatus)
    {
       if (authStatus)
       {
@@ -63,7 +63,7 @@ public class UIInputManager : MonoBehaviour
       _loading.SetActive(true);
       // Debug.Log("onLoginClicked: " + emailFieldLogin.text + ", " + passwordFieldLogin.text);
       bool successfulLogin = await _authenticationManager.Login(emailFieldLogin.text, passwordFieldLogin.text);
-      processSceneFromAuthStatus(successfulLogin);
+      displayComponentsFromAuthStatus(successfulLogin);
    }
 
    private async void onSignupClicked()
@@ -103,7 +103,7 @@ public class UIInputManager : MonoBehaviour
    private void onLogoutClick()
    {
       _authenticationManager.SignOut();
-      processSceneFromAuthStatus(false);
+      displayComponentsFromAuthStatus(false);
    }
 
    private void onStartClick()
@@ -118,7 +118,7 @@ public class UIInputManager : MonoBehaviour
    private async void RefreshToken()
    {
       bool successfulRefresh = await _authenticationManager.RefreshSession();
-      processSceneFromAuthStatus(successfulRefresh);
+      displayComponentsFromAuthStatus(successfulRefresh);
    }
 
    void Start()

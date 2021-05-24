@@ -10,7 +10,7 @@ public class LambdaManager : MonoBehaviour
    public Button mainMenuButton;
 
    private AuthenticationManager _authenticationManager;
-   private string _lambdaFunctionName = "cognito-auth-demo-1";
+   private string _lambdaFunctionName = "YOUR_LAMBDA_FUNCTION_NAME";
 
    public async void ExecuteLambda()
    {

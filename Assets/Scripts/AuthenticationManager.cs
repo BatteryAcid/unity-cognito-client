@@ -14,9 +14,9 @@ public class AuthenticationManager : MonoBehaviour
    public static Amazon.RegionEndpoint Region = Amazon.RegionEndpoint.USEast1;
 
    // In production, should probably keep these in a config file
-   const string IdentityPool = "us-east-1:f7a0ab43-0346-4960-9922-ca94bbbffda0"; //insert your Cognito User Pool ID, found under General Settings
-   const string AppClientID = "75225apkfdj0pbsnr9k2uj8i17"; //insert App client ID, found under App Client Settings
-   const string userPoolId = "us-east-1_1hbXtfSYh";
+   const string IdentityPool = "YOUR_IDENTITY_POOL_ID"; //insert your Cognito User Pool ID, found under General Settings
+   const string AppClientID = "YOUR_APP_CLIENT_ID"; //insert App client ID, found under App Client Settings
+   const string userPoolId = "YOUR_USER_POOL_ID";
 
    private AmazonCognitoIdentityProviderClient _provider;
    private CognitoAWSCredentials _cognitoAWSCredentials;
@@ -233,6 +233,7 @@ public class AuthenticationManager : MonoBehaviour
       return _cognitoAWSCredentials;
    }
 
+   // access to the user's access token to be used wherever needed - may not need this at all.
    public string GetAccessToken()
    {
       UserSessionCache userSessionCache = new UserSessionCache();
