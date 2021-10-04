@@ -31,6 +31,8 @@ public class AuthenticationManager : MonoBehaviour
       UserSessionCache userSessionCache = new UserSessionCache();
       SaveDataManager.LoadJsonData(userSessionCache);
 
+      if (userSessionCache != null && userSessionCache._refreshToken != null && userSessionCache._refreshToken != "")
+      {
       try
       {
          CognitoUserPool userPool = new CognitoUserPool(userPoolId, AppClientID, _provider);
@@ -89,6 +91,7 @@ public class AuthenticationManager : MonoBehaviour
       catch (Exception ex)
       {
          Debug.Log("Exception: " + ex);
+      }
       }
       return false;
    }

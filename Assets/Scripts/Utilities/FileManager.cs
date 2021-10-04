@@ -9,6 +9,7 @@ public static class FileManager
    public static bool WriteToFile(string a_FileName, string a_FileContents)
    {
       var fullPath = Path.Combine(UIInputManager.CachePath, a_FileName);
+      // Debug.Log(fullPath);
 
       try
       {
@@ -33,7 +34,7 @@ public static class FileManager
       }
       catch (Exception e)
       {
-         Debug.LogError($"Failed to read from {fullPath} with exception {e}");
+         Debug.LogWarning($"Failed to read from {fullPath}, file should be created after a successful login, can probably ignore. Exception {e}.");
          result = "";
          return false;
       }
