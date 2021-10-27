@@ -2,6 +2,9 @@
 
 This project demonstrates how to use the AWS SDK and Cognito to create sign-up and login functionality in your Unity project. 
 
+### ** UPDATE 10/2021 ** 
+While this video demonstrates how to make calls from the game client through the AWS SDK, it is NOT best practice.  Calls should go through some form of authentication like through an API Gateway Authorizer, then on to a Lambda function, for example, that performs the API calls after authorization.  See my other video that demonstrates this: https://youtu.be/lzQ2rLqlqyk
+
 Note: this is not a production ready implementation, but more of a jumping-off point to help you get started on your project.
 
 ## Tutorial Video  
