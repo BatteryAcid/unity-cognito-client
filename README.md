@@ -21,6 +21,9 @@ Note: this is not a production ready implementation, but more of a jumping-off p
 * [Additional Packages] https://youtu.be/rUAhtlD-wXg?t=108
     * Follow instructions in GitHub issue: https://github.com/aws/aws-sdk-net/issues/1684#issuecomment-692999656
     
+## 👋 Let's talk shop 👇  
+[Discord] https://discord.gg/psjbBDvNBK  
+[Twitter] https://twitter.com/BatteryAcidDev
     
 ## References
 * https://serverless-game-analytics.workshop.aws/en/cognito/code.html
